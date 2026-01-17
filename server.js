@@ -298,3 +298,35 @@ process.on('unhandledRejection', (error) => {
 });
 
 startServer().catch(console.error);
+// ДОБАВЬТЕ ЭТОТ КОД в server.js
+const BACKUP_DIR = path.join(__dirname, 'backups');
+
+// Функция создания резервной копии
+async function createBackup() {
+    try {
+        await fsExtra.ensureDir(BACKUP_DIR);
+        
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const backupFile = path.join(BACKUP_DIR, `backup-${timestamp}.json`);
+        
+        const recipes = await fs.readFile(RECIPES_FILE, 'utf8');
+        const wishes = await fs.readFile(WISHES_FILE, 'utf8');
+        
+        const backupData = {
+            timestamp: new Date().toISOString(),
+            recipes: JSON.parse(recipes),
+            wishes: JSON.parse(wishes)
+        };
+        
+        await fs.writeFile(backupFile, JSON.stringify(backupData, null, 2));
+        console.log(`✅ Резервная копия создана: ${backupFile}`);
+    } catch (error) {
+        console.error('Ошибка создания резервной копии:', error);
+    }
+}
+
+// Создаём резервную копию раз в день
+setInterval(createBackup, 24 * 60 * 60 * 1000);
+
+// И при запуске сервера
+createBackup();
