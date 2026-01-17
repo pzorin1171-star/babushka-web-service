@@ -1,358 +1,199 @@
 const express = require('express');
 const fs = require('fs').promises;
-const fsExtra = require('fs-extra');
 const path = require('path');
-const cors = require('cors');
-const morgan = require('morgan');
+const cors = require('cors'); // Для разрешения запросов с браузера
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
-app.use(cors());
-app.use(express.json());
-app.use(morgan('tiny'));
-app.use(express.static('public')); // Отдаём статические файлы
+// Константы для keep-alive
+const KEEP_ALIVE_INTERVAL = 60000; // 1 минута
+const TEMP_DATA_FILE = path.join(__dirname, 'data', '_keep_alive_temp.json');
 
-// Пути к файлам данных
-const DATA_DIR = path.join(__dirname, 'data');
-const RECIPES_FILE = path.join(DATA_DIR, 'recipes.json');
-const WISHES_FILE = path.join(DATA_DIR, 'wishes.json');
+// ==================== МИДЛВАРЫ ====================
+app.use(cors()); // Разрешаем запросы с вашего сайта
+app.use(express.static(path.join(__dirname, 'public'))); // Отдаем статику (ваш HTML, CSS, images)
+app.use(express.json()); // Читаем JSON из запросов
 
-// Инициализация при запуске
-async function initializeApp() {
-    try {
-        // Создаём папку data, если её нет
-        await fsExtra.ensureDir(DATA_DIR);
-        
-        // Создаём файлы с начальными данными, если их нет
-        const initialData = {
-            recipes: [],
-            wishes: []
-        };
-        
-        if (!await fsExtra.pathExists(RECIPES_FILE)) {
-            await fs.writeFile(RECIPES_FILE, JSON.stringify(initialData.recipes, null, 2));
-            console.log('📁 Создан файл рецептов');
-        }
-        
-        if (!await fsExtra.pathExists(WISHES_FILE)) {
-            await fs.writeFile(WISHES_FILE, JSON.stringify(initialData.wishes, null, 2));
-            console.log('📁 Создан файл пожеланий');
-        }
-        
-        console.log('✅ Сервер инициализирован');
-    } catch (error) {
-        console.error('❌ Ошибка инициализации:', error);
-    }
-}
+// ==================== МАРШРУТЫ API ====================
 
-// ==================== API ДЛЯ РЕЦЕПТОВ ====================
-
-// Получить все рецепты
-app.get('/api/recipes', async (req, res) => {
-    try {
-        const data = await fs.readFile(RECIPES_FILE, 'utf8');
-        const recipes = JSON.parse(data);
-        res.json({ 
-            success: true, 
-            count: recipes.length,
-            data: recipes 
-        });
-    } catch (error) {
-        console.error('Ошибка чтения рецептов:', error);
-        res.status(500).json({ 
-            success: false, 
-            error: 'Ошибка сервера при чтении рецептов' 
-        });
-    }
-});
-
-// Добавить новый рецепт
-app.post('/api/recipes', async (req, res) => {
-    try {
-        const { name, author, ingredients, instructions } = req.body;
-        
-        // Проверка данных
-        if (!name || !author || !ingredients || !instructions) {
-            return res.status(400).json({ 
-                success: false, 
-                error: 'Все поля обязательны' 
-            });
-        }
-        
-        // Читаем текущие рецепты
-        const data = await fs.readFile(RECIPES_FILE, 'utf8');
-        const recipes = JSON.parse(data);
-        
-        // Создаём новый рецепт
-        const newRecipe = {
-            id: Date.now(),
-            name: name.trim(),
-            author: author.trim(),
-            ingredients: ingredients.trim(),
-            instructions: instructions.trim(),
-            date: new Date().toLocaleString('ru-RU', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            }),
-            createdAt: new Date().toISOString()
-        };
-        
-        // Добавляем в начало массива
-        recipes.unshift(newRecipe);
-        
-        // Сохраняем в файл
-        await fs.writeFile(RECIPES_FILE, JSON.stringify(recipes, null, 2));
-        
-        res.json({ 
-            success: true, 
-            message: 'Рецепт успешно сохранён на сервере!',
-            data: newRecipe,
-            totalRecipes: recipes.length
-        });
-        
-    } catch (error) {
-        console.error('Ошибка сохранения рецепта:', error);
-        res.status(500).json({ 
-            success: false, 
-            error: 'Ошибка при сохранении рецепта' 
-        });
-    }
-});
-
-// Удалить рецепт
-app.delete('/api/recipes/:id', async (req, res) => {
-    try {
-        const recipeId = parseInt(req.params.id);
-        const data = await fs.readFile(RECIPES_FILE, 'utf8');
-        let recipes = JSON.parse(data);
-        
-        const initialLength = recipes.length;
-        recipes = recipes.filter(recipe => recipe.id !== recipeId);
-        
-        if (recipes.length === initialLength) {
-            return res.status(404).json({ 
-                success: false, 
-                error: 'Рецепт не найден' 
-            });
-        }
-        
-        await fs.writeFile(RECIPES_FILE, JSON.stringify(recipes, null, 2));
-        
-        res.json({ 
-            success: true, 
-            message: 'Рецепт удалён',
-            totalRecipes: recipes.length
-        });
-        
-    } catch (error) {
-        console.error('Ошибка удаления рецепта:', error);
-        res.status(500).json({ 
-            success: false, 
-            error: 'Ошибка при удалении рецепта' 
-        });
-    }
-});
-
-// ==================== API ДЛЯ ПОЖЕЛАНИЙ ====================
-
-// Получить все пожелания
-app.get('/api/wishes', async (req, res) => {
-    try {
-        const data = await fs.readFile(WISHES_FILE, 'utf8');
-        const wishes = JSON.parse(data);
-        res.json({ 
-            success: true, 
-            count: wishes.length,
-            data: wishes 
-        });
-    } catch (error) {
-        console.error('Ошибка чтения пожеланий:', error);
-        res.status(500).json({ 
-            success: false, 
-            error: 'Ошибка сервера при чтении пожеланий' 
-        });
-    }
-});
-
-// Добавить новое пожелание
-app.post('/api/wishes', async (req, res) => {
-    try {
-        const { author, text } = req.body;
-        
-        if (!author || !text) {
-            return res.status(400).json({ 
-                success: false, 
-                error: 'Все поля обязательны' 
-            });
-        }
-        
-        const data = await fs.readFile(WISHES_FILE, 'utf8');
-        const wishes = JSON.parse(data);
-        
-        const newWish = {
-            id: Date.now(),
-            author: author.trim(),
-            text: text.trim(),
-            date: new Date().toLocaleString('ru-RU', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            }),
-            createdAt: new Date().toISOString()
-        };
-        
-        wishes.unshift(newWish);
-        await fs.writeFile(WISHES_FILE, JSON.stringify(wishes, null, 2));
-        
-        res.json({ 
-            success: true, 
-            message: 'Пожелание успешно отправлено бабушке!',
-            data: newWish,
-            totalWishes: wishes.length
-        });
-        
-    } catch (error) {
-        console.error('Ошибка сохранения пожелания:', error);
-        res.status(500).json({ 
-            success: false, 
-            error: 'Ошибка при сохранении пожелания' 
-        });
-    }
-});
-
-// ==================== СИСТЕМА "ПРОБУЖДЕНИЯ" ====================
-
-// Эндпоинт для пинга (чтобы Render не "усыплял" сервис)
+// 1. Keep-alive эндпоинт (для пинга)
 app.get('/api/ping', (req, res) => {
+    console.log(`[${new Date().toISOString()}] Получен пинг от клиента`);
     res.json({ 
         success: true, 
-        message: 'Сервер активен',
-        timestamp: new Date().toISOString(),
-        uptime: process.uptime()
+        message: 'Сервер активен', 
+        timestamp: new Date().toISOString() 
     });
 });
 
-// Запуск периодического самопинга
-function startSelfPing() {
-    const PING_INTERVAL = 5 * 60 * 1000; // 5 минут
-    
-    setInterval(async () => {
-        try {
-            const response = await fetch(`http://localhost:${PORT}/api/ping`);
-            console.log(`✅ Самопинг: ${new Date().toLocaleTimeString('ru-RU')}`);
-        } catch (error) {
-            console.log('⚠️  Самопинг не удался (нормально при запуске)');
-        }
-    }, PING_INTERVAL);
-    
-    console.log('🔄 Система самопинга запущена');
+// 2. Получить все рецепты
+app.get('/api/recipes', async (req, res) => {
+    try {
+        const data = await readDataFile('recipes.json');
+        res.json({ success: true, data });
+    } catch (error) {
+        res.status(500).json({ success: false, error: 'Ошибка чтения рецептов' });
+    }
+});
+
+// 3. Сохранить новый рецепт
+app.post('/api/recipes', async (req, res) => {
+    try {
+        const newRecipe = {
+            id: Date.now(),
+            date: new Date().toLocaleDateString('ru-RU'),
+            ...req.body
+        };
+        
+        const recipes = await readDataFile('recipes.json');
+        recipes.push(newRecipe);
+        await writeDataFile('recipes.json', recipes);
+        
+        res.json({ success: true, message: 'Рецепт сохранён!', data: newRecipe });
+    } catch (error) {
+        res.status(500).json({ success: false, error: 'Ошибка сохранения рецепта' });
+    }
+});
+
+// 4. Получить все пожелания
+app.get('/api/wishes', async (req, res) => {
+    try {
+        const data = await readDataFile('wishes.json');
+        res.json({ success: true, data });
+    } catch (error) {
+        res.status(500).json({ success: false, error: 'Ошибка чтения пожеланий' });
+    }
+});
+
+// 5. Сохранить новое пожелание
+app.post('/api/wishes', async (req, res) => {
+    try {
+        const newWish = {
+            id: Date.now(),
+            date: new Date().toLocaleDateString('ru-RU'),
+            ...req.body
+        };
+        
+        const wishes = await readDataFile('wishes.json');
+        wishes.push(newWish);
+        await writeDataFile('wishes.json', wishes);
+        
+        res.json({ success: true, message: 'Пожелание сохранено!', data: newWish });
+    } catch (error) {
+        res.status(500).json({ success: false, error: 'Ошибка сохранения пожелания' });
+    }
+});
+
+// ==================== ВНУТРЕННИЙ KEEP-ALIVE МЕХАНИЗМ ====================
+
+// Функция для внутреннего самопина сервера
+async function serverKeepAlive() {
+    try {
+        // 1. Создаем временную запись
+        const tempData = { 
+            timestamp: new Date().toISOString(), 
+            note: 'Keep-alive heartbeat' 
+        };
+        await fs.writeFile(TEMP_DATA_FILE, JSON.stringify(tempData, null, 2));
+        console.log(`[${new Date().toLocaleTimeString()}] Keep-alive: запись создана`);
+
+        // 2. Ждем 50 секунд
+        await new Promise(resolve => setTimeout(resolve, 50000));
+
+        // 3. Удаляем временную запись
+        await fs.unlink(TEMP_DATA_FILE);
+        console.log(`[${new Date().toLocaleTimeString()}] Keep-alive: запись удалена`);
+
+        // 4. Также делаем HTTP-запрос к себе (дополнительная активность)
+        const fetch = (await import('node-fetch')).default;
+        const response = await fetch(`http://localhost:${PORT}/api/ping`);
+        console.log(`[${new Date().toLocaleTimeString()}] Keep-alive: самопинг, статус ${response.status}`);
+        
+    } catch (error) {
+        console.log('Keep-alive ошибка:', error.message);
+    }
 }
 
-// ==================== СТАТИЧЕСКИЕ ФАЙЛЫ ====================
+// Запускаем keep-alive каждую минуту
+let keepAliveInterval;
+function startKeepAlive() {
+    console.log('🔄 Внутренний keep-alive механизм запущен');
+    serverKeepAlive(); // Запустить сразу
+    keepAliveInterval = setInterval(serverKeepAlive, KEEP_ALIVE_INTERVAL);
+}
 
-// Главная страница
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
+function stopKeepAlive() {
+    if (keepAliveInterval) {
+        clearInterval(keepAliveInterval);
+        console.log('⏹️ Keep-alive механизм остановлен');
+    }
+}
 
-// Запасной маршрут для SPA
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
+// ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====================
+
+async function readDataFile(filename) {
+    try {
+        const filePath = path.join(__dirname, 'data', filename);
+        const data = await fs.readFile(filePath, 'utf8');
+        return JSON.parse(data);
+    } catch (error) {
+        // Если файла нет, возвращаем пустой массив
+        if (error.code === 'ENOENT') {
+            return [];
+        }
+        throw error;
+    }
+}
+
+async function writeDataFile(filename, data) {
+    const dirPath = path.join(__dirname, 'data');
+    
+    // Создаем папку data, если её нет
+    try { await fs.mkdir(dirPath, { recursive: true }); } 
+    catch (error) { /* Папка уже существует */ }
+    
+    const filePath = path.join(dirPath, filename);
+    await fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
+}
 
 // ==================== ЗАПУСК СЕРВЕРА ====================
 
-async function startServer() {
-    await initializeApp();
-    
-    app.listen(PORT, () => {
-        console.log(`
-    🚀 Сервер запущен!
-    📍 Порт: ${PORT}
-    🌐 Локально: http://localhost:${PORT}
-    📊 API:
-        GET  /api/recipes     - все рецепты
-        POST /api/recipes     - добавить рецепт
-        GET  /api/wishes      - все пожелания
-        POST /api/wishes      - добавить пожелание
-        GET  /api/ping        - проверить сервер
-        `);
-        
-        // Запускаем самопинг в продакшене
-        if (process.env.NODE_ENV === 'production') {
-            startSelfPing();
+async function initializeServer() {
+    // Создаем начальные файлы данных, если их нет
+    try {
+        const initialData = { recipes: [], wishes: [] };
+        for (const [key, value] of Object.entries(initialData)) {
+            const filePath = path.join(__dirname, 'data', `${key}.json`);
+            try {
+                await fs.access(filePath);
+            } catch {
+                await writeDataFile(`${key}.json`, value);
+                console.log(`Файл ${key}.json создан`);
+            }
         }
+    } catch (error) {
+        console.log('Ошибка инициализации данных:', error);
+    }
+    
+    // Запускаем сервер
+    app.listen(PORT, () => {
+        console.log(`🚀 Сервер запущен на порту ${PORT}`);
+        console.log(`📁 Статика раздается из папки /public`);
+        console.log(`💾 Данные хранятся в папке /data`);
+        console.log(`🔗 API доступно по адресу: http://localhost:${PORT}/api/`);
+        
+        // Запускаем keep-alive механизм
+        startKeepAlive();
     });
 }
 
-// Обработка ошибок
-process.on('unhandledRejection', (error) => {
-    console.error('❌ Необработанная ошибка:', error);
+// Обработка корректного завершения
+process.on('SIGINT', () => {
+    console.log('\n🛑 Остановка сервера...');
+    stopKeepAlive();
+    process.exit(0);
 });
 
-startServer().catch(console.error);
-// ДОБАВЬТЕ ЭТОТ КОД в server.js
-const BACKUP_DIR = path.join(__dirname, 'backups');
-
-// Функция создания резервной копии
-async function createBackup() {
-    try {
-        await fsExtra.ensureDir(BACKUP_DIR);
-        
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const backupFile = path.join(BACKUP_DIR, `backup-${timestamp}.json`);
-        
-        const recipes = await fs.readFile(RECIPES_FILE, 'utf8');
-        const wishes = await fs.readFile(WISHES_FILE, 'utf8');
-        
-        const backupData = {
-            timestamp: new Date().toISOString(),
-            recipes: JSON.parse(recipes),
-            wishes: JSON.parse(wishes)
-        };
-        
-        await fs.writeFile(backupFile, JSON.stringify(backupData, null, 2));
-        console.log(`✅ Резервная копия создана: ${backupFile}`);
-    } catch (error) {
-        console.error('Ошибка создания резервной копии:', error);
-    }
-}
-
-// Создаём резервную копию раз в день
-setInterval(createBackup, 24 * 60 * 60 * 1000);
-
-// И при запуске сервера
-createBackup();
-// ... после других импортов
-const setupPhotos = require('./upload-photos');
-
-// В функцию initializeApp добавьте:
-async function initializeApp() {
-    try {
-        // Создаём папки для данных
-        await fsExtra.ensureDir(DATA_DIR);
-        
-        // Создаём файлы с начальными данными, если их нет
-        if (!await fsExtra.pathExists(RECIPES_FILE)) {
-            await fs.writeFile(RECIPES_FILE, JSON.stringify([], null, 2));
-        }
-        
-        if (!await fsExtra.pathExists(WISHES_FILE)) {
-            await fs.writeFile(WISHES_FILE, JSON.stringify([], null, 2));
-        }
-        
-        // Создаём папку и заглушки для фотографий
-        await setupPhotos();
-        
-        console.log('✅ Сервер инициализирован');
-    } catch (error) {
-        console.error('❌ Ошибка инициализации:', error);
-    }
-}
+// Запуск
+initializeServer();
