@@ -330,3 +330,29 @@ setInterval(createBackup, 24 * 60 * 60 * 1000);
 
 // И при запуске сервера
 createBackup();
+// ... после других импортов
+const setupPhotos = require('./upload-photos');
+
+// В функцию initializeApp добавьте:
+async function initializeApp() {
+    try {
+        // Создаём папки для данных
+        await fsExtra.ensureDir(DATA_DIR);
+        
+        // Создаём файлы с начальными данными, если их нет
+        if (!await fsExtra.pathExists(RECIPES_FILE)) {
+            await fs.writeFile(RECIPES_FILE, JSON.stringify([], null, 2));
+        }
+        
+        if (!await fsExtra.pathExists(WISHES_FILE)) {
+            await fs.writeFile(WISHES_FILE, JSON.stringify([], null, 2));
+        }
+        
+        // Создаём папку и заглушки для фотографий
+        await setupPhotos();
+        
+        console.log('✅ Сервер инициализирован');
+    } catch (error) {
+        console.error('❌ Ошибка инициализации:', error);
+    }
+}
