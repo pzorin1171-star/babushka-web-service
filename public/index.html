@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Сайт для бабушки | Общие данные на сервере</title>
+    <link rel="stylesheet" href="/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Open+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Навигация -->
+    <nav>
+        <div class="nav-content">
+            <a href="#home"><i class="fas fa-home"></i> Главная</a>
+            <a href="#gallery"><i class="fas fa-images"></i> Галерея</a>
+            <a href="#recipes"><i class="fas fa-utensils"></i> Рецепты</a>
+            <a href="#wishes"><i class="fas fa-heart"></i> Пожелания</a>
+            <div class="server-status">
+                <span id="serverStatus">🟢 Сервер онлайн</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Главная -->
+    <header id="home" class="hero">
+        <div class="hero-content">
+            <div class="birthday-badge">
+                <i class="fas fa-birthday-cake"></i>
+                <span>С Днём Рождения!</span>
+            </div>
+            
+            <h1>Дорогая бабушка!</h1>
+            <p class="hero-subtitle">Теперь все рецепты и пожелания хранятся на общем сервере и доступны на любом устройстве!</p>
+            
+            <div class="features">
+                <div class="feature">
+                    <i class="fas fa-sync-alt"></i>
+                    <h3>Общие данные</h3>
+                    <p>Добавил рецепт на телефоне → видно на компьютере</p>
+                </div>
+                <div class="feature">
+                    <i class="fas fa-database"></i>
+                    <h3>Надёжное хранение</h3>
+                    <p>Всё сохраняется на сервере, не теряется при очистке браузера</p>
+                </div>
+                <div class="feature">
+                    <i class="fas fa-users"></i>
+                    <h3>Для всей семьи</h3>
+                    <p>Каждый видит то, что добавили другие</p>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <!-- Галерея -->
+        <section id="gallery" class="gallery">
+            <h2><i class="fas fa-images"></i> Семейные фотографии</h2>
+            <div class="photos-grid">
+                <!-- Фотографии -->
+            </div>
+        </section>
+
+        <!-- Рецепты -->
+        <section id="recipes" class="recipes">
+            <h2><i class="fas fa-utensils"></i> Семейные рецепты</h2>
+            <p class="subtitle">Все рецепты хранятся на сервере и доступны каждому</p>
+            
+            <div id="recipesContainer" class="cards-container">
+                <!-- Рецепты загружаются через API -->
+            </div>
+            
+            <div class="add-form">
+                <h3><i class="fas fa-plus-circle"></i> Добавить новый рецепт</h3>
+                <form id="recipeForm">
+                    <input type="text" id="recipeName" placeholder="Название блюда" required>
+                    <input type="text" id="recipeAuthor" placeholder="Ваше имя" required>
+                    <textarea id="recipeIngredients" placeholder="Ингредиенты..." rows="4" required></textarea>
+                    <textarea id="recipeInstructions" placeholder="Способ приготовления..." rows="6" required></textarea>
+                    <button type="submit" class="btn-primary">
+                        <i class="fas fa-cloud-upload-alt"></i> Сохранить на сервере
+                    </button>
+                </form>
+                <div id="recipeMessage" class="message"></div>
+            </div>
+        </section>
+
+        <!-- Пожелания -->
+        <section id="wishes" class="wishes">
+            <h2><i class="fas fa-heart"></i> Пожелания бабушке</h2>
+            <p class="subtitle">Общие пожелания от всей семьи</p>
+            
+            <div id="wishesContainer" class="cards-container">
+                <!-- Пожелания загружаются через API -->
+            </div>
+            
+            <div class="add-form">
+                <h3><i class="fas fa-pen"></i> Написать пожелание</h3>
+                <form id="wishForm">
+                    <input type="text" id="wishAuthor" placeholder="Ваше имя" required>
+                    <textarea id="wishText" placeholder="Ваше пожелание..." rows="5" required></textarea>
+                    <button type="submit" class="btn-primary">
+                        <i class="fas fa-paper-plane"></i> Отправить на сервер
+                    </button>
+                </form>
+                <div id="wishMessage" class="message"></div>
+            </div>
+        </section>
+
+        <!-- Статус сервера -->
+        <section class="server-info">
+            <h2><i class="fas fa-server"></i> Информация о сервере</h2>
+            <div class="info-grid">
+                <div class="info-card">
+                    <i class="fas fa-database"></i>
+                    <h3>Хранение данных</h3>
+                    <p>Все рецепты и пожелания хранятся в JSON-файлах на сервере</p>
+                </div>
+                <div class="info-card">
+                    <i class="fas fa-globe"></i>
+                    <h3>Доступность</h3>
+                    <p>Данные доступны с любого устройства 24/7</p>
+                </div>
+                <div class="info-card">
+                    <i class="fas fa-users"></i>
+                    <h3>Для семьи</h3>
+                    <p>Каждый член семьи видит общие данные</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>Сайт работает на собственном сервере • Данные общие для всех • С любовью для бабушки ❤️</p>
+        <p class="server-version">Версия сервера: <span id="serverVersion">Загрузка...</span></p>
+    </footer>
+
+    <script src="/script.js"></script>
+</body>
+</html>
